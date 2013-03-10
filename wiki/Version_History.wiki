@@ -1,9 +1,10 @@
-= v1.1 (2013-03-10) =
+= Version History =
+== v1.1 (2013-03-10) ==
 
   * Function `sensorGetData` was divided to `sensorGetData1`, `sensorGetData3` and `sensorGetData4` with different numbers of parameters.
   * Added demo project #2 for rotation vector sensor.
   * Updated ZExternalLibrary and ZGE demo projects accordingly.
 
-= v1.0 (2013-03-03) =
+== v1.0 (2013-03-03) ==
 
   * Initial version.
