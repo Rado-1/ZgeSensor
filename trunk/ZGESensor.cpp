@@ -32,6 +32,16 @@ freely, subject to the following restrictions:
 
 #define LOOPER_ID 1
 
+//Additional sensor types; not in NDK, but available in SDK
+enum {
+    ASENSOR_TYPE_PRESSURE               = 6,
+    ASENSOR_TYPE_GRAVITY                = 9,
+    ASENSOR_TYPE_LINEAR_ACCELERATION    = 10,
+    ASENSOR_TYPE_ROTATION_VECTOR        = 11,
+    ASENSOR_TYPE_RELATIVE_HUMIDITY      = 12,
+    ASENSOR_TYPE_AMBIENT_TEMPERATURE    = 13
+};
+
 // Includes
 #include <cstdlib>
 #include <android/sensor.h>
@@ -42,7 +52,7 @@ ASensorManager* sensorManager = ASensorManager_getInstance();
 ASensorEventQueue* sensorEventQueue;
 struct SensorItem {
     const ASensor* sensor;
-    float x, y, z;
+    ASensorEvent event;
 } sensors [NUMBER_OF_SENSORS];
 ASensorEvent event;
 
@@ -102,9 +112,7 @@ export int sensorUpdateData(){
     int numberOfEvents = 0;
 
     while (ASensorEventQueue_getEvents(sensorEventQueue, &event, 1) > 0){
-        sensors[event.type].x = event.vector.x;
-        sensors[event.type].y = event.vector.y;
-        sensors[event.type].z = event.vector.z;
+        sensors[event.type].event = event;
         numberOfEvents++;
     }
 
@@ -112,15 +120,54 @@ export int sensorUpdateData(){
 }
 
 /*
+ * Get actual data for the selected scalar sensor type.
+ * This is used for sensors such as ambient temperature,
+ * proximity, light, pressure or humidity.
+ */
+export void sensorGetData1(int type, float &value){
+    value = sensors[type].event.data[0];
+}
+
+/*
+ * Get actual data for the selected 3D sensor type.
+ * This is used for sensors such as accelerometer, magnetic field,
+ * gyroscope, or gravity.
+ */
+export void sensorGetData3(int type, float &x, float &y, float &z){
+    x = sensors[type].event.data[0];
+    y = sensors[type].event.data[1];
+    z = sensors[type].event.data[2];
+}
+
+/*
+ * Get actual data for the selected 3D sensor type.
+ * Rotation vector sensor uses <x, y, z, w> as components of
+ * a unit quaternion representing rotation of the device.
+ */
+export void sensorGetData4(int type, float &x, float &y, float &z, float &w){
+    x = sensors[type].event.data[0];
+    y = sensors[type].event.data[1];
+    z = sensors[type].event.data[2];
+    w = sensors[type].event.data[3];
+}
+
+
+
+
+
+
+/*
  * Get actual data for the selected sensor type.
  * Vector sensors, such as accelerometer, magnetic field, or
- * gyroscope use x, y and z values. Scalar sensors, such as
- * light, proximity or temperature, use just x value.
+ * gyroscope use <x, y, z> values. Scalar sensors, such as
+ * light, proximity or temperature, use just <x> value. Rotation
+ * vector uses <x, y, z, w> as components of a unit quaternion.
  */
-export void sensorGetData(int type, float &x, float &y, float &z){
-    x = sensors[type].x;
-    y = sensors[type].y;
-    z = sensors[type].z;
+export void sensorGetData(int type, float &x, float &y, float &z, float &w){
+    x = sensors[type].event.data[0];
+    y = sensors[type].event.data[1];
+    z = sensors[type].event.data[2];
+    w = sensors[type].event.data[3];
 }
 
 // Return name of a sensor of the specified type.
