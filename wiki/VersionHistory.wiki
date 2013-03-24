@@ -5,7 +5,7 @@
   * Added function `getDisplayRotation`
   * Added JNI initialization in `JNI_OnLoad` function
   * Removed `sensorUpdateData` function; sensor data is updated automatically in a callback
-  * Added optional logging to LogCat
+  * Added optional logging to logcat
   * Updated demo projects to handle device's display rotation
 
 == v1.1 (2013-03-10) ==
