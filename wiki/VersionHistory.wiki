@@ -7,6 +7,7 @@
   * Removed `sensorUpdateData` function; sensor data is updated automatically in a callback
   * Added optional logging to logcat (switched off by default)
   * Updated demo projects to handle device's display rotation
+  * Added demo project #3.
 
 == v1.1 (2013-03-10) ==
 
