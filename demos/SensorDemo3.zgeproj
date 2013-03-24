@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<ZApplication Name="App" Comment="Created by Rado1 (c) 2013" Caption="Sensor Demo 3" ScreenMode="0" CameraPosition="0 0 0" FOV="95" ClipFar="400" NoSound="1" AndroidPackageName="com.rado1.SensorDemo3">
+  <OnLoaded>
+    <ZExternalLibrary Comment="OpenGL 4.0 graphics" ModuleName="opengl32" DefinitionsFile="opengl.txt">
+      <BeforeInitExp>
+<![CDATA[if(ANDROID)
+  this.ModuleName="libGLESv1_CM.so";]]>
+      </BeforeInitExp>
+    </ZExternalLibrary>
+    <ZExternalLibrary Comment="ZGESensor library" ModuleName="./libZGESensor.so" CallingConvention="1">
+      <Source>
+<![CDATA[/*
+  ZGESensor Library used to handle various sensors on Android.
+
+  Download Android shared library from
+  http://code.google.com/p/zgesensor/downloads
+
+  Copyright (c) 2013 Radovan Cervenka
+*/
+
+// sensor types; also used as sensor identifiers
+const int SENSOR_TYPE_ACCELEROMETER = 1;
+const int SENSOR_TYPE_MAGNETIC_FIELD = 2;
+const int SENSOR_TYPE_ORIENTATION = 3; // deprecated
+const int SENSOR_TYPE_GYROSCOPE = 4;
+const int SENSOR_TYPE_LIGHT = 5;
+const int SENSOR_TYPE_PROXIMITY = 8;
+const int SENSOR_TYPE_ROTATION_VECTOR = 11;
+const int SENSOR_TYPE_RELATIVE_HUMIDITY = 12;
+const int SENSOR_TYPE_PRESSURE = 6;
+const int SENSOR_TYPE_LINEAR_ACCELERATION = 10;
+const int SENSOR_TYPE_GRAVITY = 9;
+const int SENSOR_TYPE_AMBIENT_TEMPERATURE = 13;
+
+// display rotation
+const int ROTATION_0 = 0;
+const int ROTATION_90 = 1;
+const int ROTATION_180 = 2;
+const int ROTATION_270 = 3;
+
+// Initialize the library.
+void sensorInitLib() {}
+
+// Stop the library usage. Returns a negative error code on failure.
+int sensorStopLib() {}
+
+// Get rotation of display
+int getDisplayRotation() {}
+
+// Start to use sensor of the specified type.
+// Returns a negative error code on failure.
+int sensorUse(int type) {}
+
+// Set the delivery rate of events in microseconds for a sensor
+// of the given type.
+// Returns a negative error code on failure.
+int sensorSetEventRate(int type, float eventRate) {}
+
+// Disable a sensor of the specified type.
+// Returns a negative error code on failure.
+int sensorDisable(int type) {}
+
+// Enable a sensor of the specified type.
+// Returns a negative error code on failure.
+int sensorEnable(int type) {}
+
+/*
+ * Get actual data for the selected scalar sensor type.
+ * This is used for sensors such as ambient temperature,
+ * proximity, light, pressure or humidity.
+ */
+void sensorGetData1(int type, ref float value) {}
+
+/*
+ * Get actual data for the selected 3D sensor type.
+ * This is used for sensors such as accelerometer, magnetic field,
+ * gyroscope, or gravity.
+ */
+void sensorGetData3(int type, ref float x, ref float y, ref float z) {}
+
+/*
+ * Get actual data for the selected 3D sensor type.
+ * Rotation vector sensor uses <x, y, z, w> as components of
+ * a unit quaternion representing rotation of the device.
+ */
+void sensorGetData4(int type, ref float x, ref float y, ref float z, ref float w) {}
+
+// Return name of a sensor of the specified type.
+string sensorGetName(int type) {}
+
+// Return vendor's name of a sensor of the specified type.
+string sensorGetVendor(int type) {}
+
+// Return resolution of a sensor of the specified type.
+float sensorGetResolution(int type) {}
+
+/*
+ * Return the minimum delay allowed between events in microseconds for
+ * a sensor of the specified type.
+ */
+float sensorGetMinDelay(int type) {}]]>
+      </Source>
+    </ZExternalLibrary>
+    <ZLibrary Comment="Utils">
+      <Source>
+<![CDATA[const float PIx2 = PI * 2;
+const float NPIx2 = PI * -2;
+const float PI2 = PI / 2;
+
+// quaternion to Euler angles
+void toEuler(float x, float y, float z, float w,
+  ref float rotX, ref float rotY, ref float rotZ){
+
+  float test = x*z - y*w;
+
+  if(test > 0.499){  // singularity at north pole
+    rotZ = 2 * atan2(x, w);
+    rotY = PI2;
+    rotX = 0;
+    return;
+  }
+
+  if(test < -0.499){  // singularity at south pole
+    rotZ = -2 * atan2(x, w);
+    rotY = -PI2;
+    rotX = 0;
+    return;
+  }
+
+  rotX = atan2(2*(w*x + y*z), 1 - 2*(x*x + y*y))/NPIx2;
+  rotY = asin(2*(w*y - z*x))/NPIx2;
+  rotZ = atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))/NPIx2;
+}]]>
+      </Source>
+    </ZLibrary>
+    <ZExpression Comment="Init sensors">
+      <Expression>
+<![CDATA[sensorInitLib();
+if(sensorUse(SENSOR_TYPE_ROTATION_VECTOR) < 0) quit();
+DisplayRotation = getDisplayRotation();]]>
+      </Expression>
+    </ZExpression>
+    <ZExpression Name="InitScene">
+      <Expression>
+<![CDATA[for(int i = 0; i< 400; i++)
+  createModel(CubeModel);
+
+App.CameraPosition = 0;]]>
+      </Expression>
+    </ZExpression>
+  </OnLoaded>
+  <OnClose>
+    <ZExpression Comment="Stop sensors" Expression="sensorStopLib();"/>
+  </OnClose>
+  <OnUpdate>
+    <KeyPress Comment="Pause" CharCode="255">
+      <OnPressed>
+        <ZExpression Comment="Disable sensors" Expression="sensorDisable(SENSOR_TYPE_ROTATION_VECTOR);"/>
+      </OnPressed>
+    </KeyPress>
+    <KeyPress Comment="Resume" CharCode="254">
+      <OnPressed>
+        <ZExpression Comment="Enable sensors" Expression="sensorEnable(SENSOR_TYPE_ROTATION_VECTOR);"/>
+      </OnPressed>
+    </KeyPress>
+    <ZExpression Comment="Update camera from sensors">
+      <Expression>
+<![CDATA[float x, y, z, w, a, b, c;
+
+// update rotation
+sensorGetData4(SENSOR_TYPE_ROTATION_VECTOR, x, y, z, w);
+
+// recompute by display rotation
+switch(DisplayRotation){
+  case ROTATION_90:
+    a = x;
+    x = 0 - y;
+    y = a;
+    break;
+  case ROTATION_180:
+    x = 0 - x;
+    y = 0 - y;
+    break;
+  case ROTATION_270:
+    a = x;
+    x = y;
+    y = 0 - a;
+}
+
+toEuler(x, y, z, w, App.CameraRotation.X, App.CameraRotation.Y, App.CameraRotation.Z);
+
+switch(touchGetCount()){
+
+  case 1: // one touch - move
+
+    // camera distance position -> rotation_quat x [0,0,1,0]) x rotation_quat^-1
+    a = z*x*2 + y*w*2;
+    b = z*y*2 - x*w*2;
+    c = z*z - y*y - x*x + w*w;
+
+    if(touchGetX(0) > 0)
+      // right screen touchGetCount - forward
+      w = App.DeltaTime;
+    else
+      // left screen touchGetCount - backward
+      w = 0 - App.DeltaTime;
+
+    App.CameraPosition.X -= SPEED * a * w;
+    App.CameraPosition.Y -= SPEED * b * w;
+    App.CameraPosition.Z -= SPEED * c * w;
+
+    // stay inside
+    App.CameraPosition.X = clamp(App.CameraPosition.X, -MAX_POS, MAX_POS);
+    App.CameraPosition.Y = clamp(App.CameraPosition.Y, -MAX_POS, MAX_POS);
+    App.CameraPosition.Z = clamp(App.CameraPosition.Z, -MAX_POS, MAX_POS);
+    break;
+
+  case 3: // three touches - regenerate scene and reset position
+
+    @RemoveAllModels();
+    @CallComponent(Component: InitScene);
+}]]>
+      </Expression>
+    </ZExpression>
+  </OnUpdate>
+  <OnRender>
+    <UseMaterial Material="WallMaterial"/>
+    <RenderTransformGroup Scale="120 120 1" Translate="0 0 -60">
+      <Children>
+        <RenderSetColor Color="1 0.7922 0.7922 1"/>
+        <RenderSprite/>
+      </Children>
+    </RenderTransformGroup>
+    <RenderTransformGroup Scale="120 120 1" Translate="0 0 60">
+      <Children>
+        <RenderSetColor Color="1 0.8078 0.6157 1"/>
+        <RenderSprite/>
+      </Children>
+    </RenderTransformGroup>
+    <RenderTransformGroup Scale="120 120 1" Translate="-60 0 0" Rotate="0 0.25 0">
+      <Children>
+        <RenderSetColor Color="1 1 0.6157 1"/>
+        <RenderSprite/>
+      </Children>
+    </RenderTransformGroup>
+    <RenderTransformGroup Scale="120 120 1" Translate="60 0 0" Rotate="0 0.25 0">
+      <Children>
+        <RenderSetColor Color="0.7765 0.7765 1 1"/>
+        <RenderSprite/>
+      </Children>
+    </RenderTransformGroup>
+    <RenderTransformGroup Scale="120 120 1" Translate="0 60 0" Rotate="0.25 0 0">
+      <Children>
+        <RenderSetColor Color="0.5686 0.7843 1 1"/>
+        <RenderSprite/>
+      </Children>
+    </RenderTransformGroup>
+    <RenderTransformGroup Scale="120 120 1" Translate="0 -60 0" Rotate="0.25 0 0">
+      <Children>
+        <RenderSetColor Color="0.7569 1 0.7569 1"/>
+        <RenderSprite/>
+      </Children>
+    </RenderTransformGroup>
+  </OnRender>
+  <Content>
+    <Group Comment="Globals">
+      <Children>
+        <Variable Name="DisplayRotation" Type="1"/>
+        <Constant Name="SPEED" Value="20"/>
+        <Constant Name="MAX_POS" Value="57"/>
+      </Children>
+    </Group>
+    <Group Comment="Artwork">
+      <Children>
+        <Group Comment="Meshes">
+          <Children>
+            <Mesh Name="CubeMesh">
+              <Producers>
+                <MeshBox/>
+              </Producers>
+            </Mesh>
+          </Children>
+        </Group>
+        <Group Comment="Bitmaps and Materials">
+          <Children>
+            <Bitmap Name="WallBitmap" Filter="2">
+              <Producers>
+                <BitmapExpression UseBlankSource="1">
+                  <Expression>
+<![CDATA[float x = this.X - 0.5, y = this.Y - 0.5;
+this.Pixel = abs(x) < 0.46 && abs(y) < 0.46;]]>
+                  </Expression>
+                </BitmapExpression>
+              </Producers>
+            </Bitmap>
+            <Material Name="WallMaterial" WireframeWidth="1" Shading="1" Color="1 1 1 0.5" Light="0" DrawBackFace="255">
+              <Textures>
+                <MaterialTexture Texture="WallBitmap" TextureScale="20 20 1" TextureWrapMode="1" TexCoords="1"/>
+              </Textures>
+            </Material>
+            <Material Name="CubeMaterial" WireframeWidth="1" Shading="1" Color="1 1 1 0.5" Light="0">
+              <Textures>
+                <MaterialTexture Texture="WallBitmap" TextureWrapMode="1" TexCoords="1"/>
+              </Textures>
+            </Material>
+          </Children>
+        </Group>
+      </Children>
+    </Group>
+    <Model Name="CubeModel" CollisionBounds="1 1 1 0" CollisionStyle="2">
+      <OnRender>
+        <UseMaterial Material="CubeMaterial"/>
+        <RenderMesh Mesh="CubeMesh"/>
+      </OnRender>
+      <OnSpawn>
+        <ZExpression Comment="Init">
+          <Expression>
+<![CDATA[CurrentModel.Position.X = random(0,59);
+CurrentModel.Position.Y = random(0,59);
+CurrentModel.Position.Z = random(0,59);]]>
+          </Expression>
+        </ZExpression>
+      </OnSpawn>
+    </Model>
+  </Content>
+</ZApplication>
