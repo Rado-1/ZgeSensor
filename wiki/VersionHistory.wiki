@@ -1,4 +1,12 @@
 = Version History =
+
+== v1.2 (2013-03-24) ==
+
+  * Added function `getDisplayRotation`
+  * Added JNI initialization in `JNI_OnLoad` function
+  * Removed `sensorUpdateData` function; sensor data is updated automatically in a callback
+  * Added optional logging to LogCat
+
 == v1.1 (2013-03-10) ==
 
   * Function `sensorGetData` was divided to `sensorGetData1`, `sensorGetData3` and `sensorGetData4` with different numbers of parameters for different sensor types.
