@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<ZApplication Name="App" Comment="Created by Rado1 (c) 2013" Caption="Sensor Demo 1" ScreenMode="0" NoSound="1" AndroidPackageName="com.rado1.SensorDemo1">
+  <OnLoaded>
+    <ZExternalLibrary Comment="ZGESensor library" ModuleName="./libZGESensor.so" CallingConvention="1">
+      <Source>
+<![CDATA[/*
+  ZGESensor Library used to handle various sensors on Android.
+
+  Download Android shared library from
+  http://code.google.com/p/zgesensor/downloads
+
+  Copyright (c) 2013 Radovan Cervenka
+*/
+
+// sensor types; also used as sensor identifiers
+const int SENSOR_TYPE_ACCELEROMETER = 1;
+const int SENSOR_TYPE_MAGNETIC_FIELD = 2;
+const int SENSOR_TYPE_ORIENTATION = 3; // deprecated
+const int SENSOR_TYPE_GYROSCOPE = 4;
+const int SENSOR_TYPE_LIGHT = 5;
+const int SENSOR_TYPE_PROXIMITY = 8;
+const int SENSOR_TYPE_ROTATION_VECTOR = 11;
+const int SENSOR_TYPE_RELATIVE_HUMIDITY = 12;
+const int SENSOR_TYPE_PRESSURE = 6;
+const int SENSOR_TYPE_LINEAR_ACCELERATION = 10;
+const int SENSOR_TYPE_GRAVITY = 9;
+const int SENSOR_TYPE_AMBIENT_TEMPERATURE = 13;
+
+// display rotation
+const int ROTATION_0 = 0;
+const int ROTATION_90 = 1;
+const int ROTATION_180 = 2;
+const int ROTATION_270 = 3;
+
+// Initialize the library.
+void sensorInitLib() {}
+
+// Stop the library usage. Returns a negative error code on failure.
+int sensorStopLib() {}
+
+// Get rotation of display
+int getDisplayRotation() {}
+
+// Start to use sensor of the specified type.
+// Returns a negative error code on failure.
+int sensorUse(int type) {}
+
+// Set the delivery rate of events in microseconds for a sensor
+// of the given type.
+// Returns a negative error code on failure.
+int sensorSetEventRate(int type, float eventRate) {}
+
+// Disable a sensor of the specified type.
+// Returns a negative error code on failure.
+int sensorDisable(int type) {}
+
+// Enable a sensor of the specified type.
+// Returns a negative error code on failure.
+int sensorEnable(int type) {}
+
+/*
+ * Get actual data for the selected scalar sensor type.
+ * This is used for sensors such as ambient temperature,
+ * proximity, light, pressure or humidity.
+ */
+void sensorGetData1(int type, ref float value) {}
+
+/*
+ * Get actual data for the selected 3D sensor type.
+ * This is used for sensors such as accelerometer, magnetic field,
+ * gyroscope, or gravity.
+ */
+void sensorGetData3(int type, ref float x, ref float y, ref float z) {}
+
+/*
+ * Get actual data for the selected 3D sensor type.
+ * Rotation vector sensor uses <x, y, z, w> as components of
+ * a unit quaternion representing rotation of the device.
+ */
+void sensorGetData4(int type, ref float x, ref float y, ref float z, ref float w) {}
+
+// Return name of a sensor of the specified type.
+string sensorGetName(int type) {}
+
+// Return vendor's name of a sensor of the specified type.
+string sensorGetVendor(int type) {}
+
+// Return resolution of a sensor of the specified type.
+float sensorGetResolution(int type) {}
+
+/*
+ * Return the minimum delay allowed between events in microseconds for
+ * a sensor of the specified type.
+ */
+float sensorGetMinDelay(int type) {}]]>
+      </Source>
+    </ZExternalLibrary>
+    <ZExpression Comment="Init">
+      <Expression>
+<![CDATA[sensorInitLib();
+
+// initialize accelerometer
+if(sensorUse(SENSOR_TYPE_ACCELEROMETER))
+  quit();
+else
+  InfoText1.Text = sensorGetName(SENSOR_TYPE_ACCELEROMETER);
+
+// initialize light
+if(sensorUse(SENSOR_TYPE_LIGHT)){
+  InfoText2.Text = "No light sensor";
+  IsLight = 0;
+} else {
+  InfoText2.Text = sensorGetName(SENSOR_TYPE_LIGHT);
+  IsLight = 1;
+}
+
+// get display rotation
+DisplayRotation = getDisplayRotation();
+string rot;
+switch(DisplayRotation){
+  case ROTATION_0: rot = "0"; break;
+  case ROTATION_90: rot = "90"; break;
+  case ROTATION_180: rot = "180"; break;
+  case ROTATION_270: rot = "270"; break;
+
+}
+InfoText3.Text = "Rotation: " + rot;]]>
+      </Expression>
+    </ZExpression>
+    <SpawnModel Model="SpriteModel"/>
+  </OnLoaded>
+  <OnClose>
+    <ZExpression Comment="Stop sensors" Expression="sensorStopLib();"/>
+  </OnClose>
+  <OnUpdate>
+    <KeyPress Comment="Pause" CharCode="255">
+      <OnPressed>
+        <ZExpression Comment="Disable sensors">
+          <Expression>
+<![CDATA[sensorDisable(SENSOR_TYPE_ACCELEROMETER);
+if(IsLight) sensorDisable(SENSOR_TYPE_LIGHT);]]>
+          </Expression>
+        </ZExpression>
+      </OnPressed>
+    </KeyPress>
+    <KeyPress Comment="Resume" CharCode="254">
+      <OnPressed>
+        <ZExpression Comment="Enable sensors">
+          <Expression>
+<![CDATA[sensorEnable(SENSOR_TYPE_ACCELEROMETER);
+if(IsLight) sensorEnable(SENSOR_TYPE_LIGHT);]]>
+          </Expression>
+        </ZExpression>
+      </OnPressed>
+    </KeyPress>
+  </OnUpdate>
+  <OnRender>
+    <UseMaterial Material="DinaMaterial"/>
+    <RenderText Name="InfoText1" Text="*************" Y="0.7" Scale="0.6"/>
+    <RenderText Name="XText" Text="X: ---" X="-0.46" Y="0.55" Scale="0.6" Align="1"/>
+    <RenderText Name="YText" Text="Y: ---" X="-0.46" Y="0.4" Scale="0.6" Align="1"/>
+    <RenderText Name="InfoText2" Text="*************" Scale="0.6"/>
+    <RenderText Name="LText" Text="L: ---" X="-0.46" Y="-0.15" Scale="0.6" Align="1"/>
+    <RenderText Name="InfoText3" Text="*************" Y="-0.54" Scale="0.6"/>
+  </OnRender>
+  <Content>
+    <Variable Name="DisplayRotation" Type="1"/>
+    <Variable Name="IsLight" Type="1"/>
+    <Group Name="DinaFontGroup" Comment="Dina">
+      <Children>
+        <Font Name="DinaFont" Bitmap="DinaBitmap" FirstChar="32" CharPixelWidth="8" CharPixelHeight="16"/>
+        <Bitmap Name="DinaBitmap" Comment="Font from http://www.donationcoder.com/Software/Jibz/Dina/index.html" Width="3" Height="3" Filter="1">
+          <Producers>
+            <BitmapFromFile Transparency="1">
+              <BitmapFile>
+<![CDATA[78DAED5DDB96E3200CE3FF7F7AF66DCF9C6930B27C011AF969A64D49A2185F844DC69048241289E42DF2F34BC0837FFF810FFEF91364846628F69EF1FFBF8F57F2F9EDF282ED038EC21F57C29EC7F1792538EC20C8E7E03F9BA48FF3F76722E9F6C7981DAE93CE0E93FEBB9493B03FCBD14E7B04D583FFB9EB6AFB8F18B7D3BC7027FE5BE29FA5A1FB02908DF97E9497CFB263F6C1C1994BF8115BC93FCD4EB5E90323AB443FCED9D88DDA58743D360E2ECD37F09F6994EBABB7E5DDEF71BE1289E48BED18EE2C246D79AB2B2E92D0544C1CFF59724A8CEF4A7E0745A6E1F11B411212D444B5FED7E16F2F88C42968EF1C8FD3B915B4460A7F9BA27B89CA530DDAD5F82FCF5884FF2DFACFADBC18A11AB838FB6709A6E81164017894FE0F3FF1D5B0049912FF544FA52CFF8B78D8A0816AB0EA9D2705D785B3F0C7EB19885BDB5EDDD1A0FF5CF07C54FC7F35FE83E2759BD75FFA53E966FBCF39C7E6F517C999CCCFB1DE3CD1950BFF2B6E53F86FC71FA94B4CF4B0C2BFCDEFBBF29DD95776F18F51D7EA4AA9F038D3F87776FD447D7E29FEAEB411BC129CD705D352BBBE6579523026BC177F6F5ABA7C5E46F15204FF41D5E75F813FC7EBC6F1B727858BF6897FEEE5AB8BEC0F8DFFA3A2DAD5A45EFD373C05E1BE677E0D9C2004FECB7B8FD81F64F014FC47C6BAFFAEF86779BCD728D1F873FA734EFCF3E6DCF304FF2BFC85BFF097ECE27F24122254131AF229C23F328984E15EFD3FFF1120FC39629F91922A90325AAE47CC4E8D132048C083B73947FAEEB3F27DD7E72033839717562C5810F8D37577DCF8DE719078FB55F87BE73B81BF8B076BC0DF360EFDF877EAFF39F6E73BF097FDCFB53FCB602631FEF1AE472CEB2E1092875E2F8BE3D31936A7971B55575C77E60B445C2AFC9B33CAB6063170AAD207B80CF217F70BEC9AD4A28024128944C2C5E79DEB716FF05674F84D34A51A5BB3CEB23C246DA7F97CFC368375B606EF57877F303C23EAEA693EA701FFEA54A2223CF6F24811FCED1D6BC1FE0B425DAFC31FD7A514FC87A7FF221DFFA2B72A80C630B2FE5B8DFF58EDBF9D62C641FC830E258BCFA7F1AFE8BF08CE0BD7DD7D37FEF66DBA0C51A26B8EECB37DF27A16DD7FC1297C965FF6E2EFB2E759C7EFC29F88FF89B848E46A5628C82565C23F8BFFE1FAFD2512894422915CE4F7BDFDE3AEF8DF3829BDBF8777FF1FEF38E075D2EB2359FCB3972F0D76DAD2F59FCD75F5F8E7C1E75B5166BC0BFF7EFD8CD7F1DE823FC2639C807F90CFF1DA557C7CD77E6E2EFC233BA2180072F66724EDAB56A4FFA07921F4DF85BF519FC0BD7758F8BBECCF0CFFACBE0C6EDFA493E31F047F504F1EF704E3F607C3FB471AE2FF94B8DD7BA90D7D6DE24B2512894422919C268A4C4E7804BB9E3BD76FEE8A6F893E77049FE538B8AA2FA740B01FD64BCF8EBC82F3B1A38FC0F815817FBC453A8EFFA8E91349E7F3D30D4BD1FB37973432DDF1B4B45717E1EFEA63F2CEC4E16F61589AE2A5CD89BC6733B8EF4A9B5376191357E5B0EB2B57EF4CF0A5E134AFBBFC3C45FF6D83F3F855CA0B6B3E870A1A8A745E7DE97F73ED7F1BFF8F3B1A6E0A14EDF75514FF2C4DB177EA8171FBD2FE2F437722EFA8E0DB7BB6BB9174E6B912894422915CEDDDD2399F6552702F383DE3B7ED4E59340297F4E13C7C967635E0EF852225E08FE3FFB86F06B26340D6456665BE41FCAB8D00B29FBC412E75E24F90BD771961702B98D97E4A0DFA8F932D7B1F41B5FD6FA0C5B8BAD3E07CEFC7DFEE53B3DFE7DE89FF5EFD1F65EB9888FF9D1DD96C7F76D9FFEDF8DF1BFFEC7A04F624F56E31140FFBBFE3FDB0CDF837E4A1D76D329F32DFFBEF2E52DAF42A424682C83F99AF58DD]]>
+              </BitmapFile>
+            </BitmapFromFile>
+          </Producers>
+        </Bitmap>
+        <Material Name="DinaMaterial" Shading="1" Light="0" Blend="1" ZBuffer="0" Font="DinaFont"/>
+      </Children>
+    </Group> <!-- DinaFontGroup -->
+
+    <Model Name="SpriteModel">
+      <OnRender>
+        <RenderSetColor Color="0.2745 0.6392 1 1"/>
+        <RenderSprite/>
+      </OnRender>
+      <OnUpdate>
+        <ZExpression Comment="Use sensor data">
+          <Expression>
+<![CDATA[float x, y, a;
+
+// update position by accelerometer
+
+sensorGetData3(SENSOR_TYPE_ACCELEROMETER, x, y, a);
+
+// recompute by display rotation
+switch(DisplayRotation){
+  case ROTATION_0:
+    x = 0 - x;
+    y = 0 - y;
+    break;
+  case ROTATION_90:
+    a = x;
+    x = y;
+    y = 0 - a;
+    break;
+  case ROTATION_270:
+    a = x;
+    x = 0 - y;
+    y = x;
+}
+
+CurrentModel.Velocity.X = x;
+CurrentModel.Velocity.Y = y;
+
+if(abs(CurrentModel.Position.X) > 7){
+  CurrentModel.Position.X = 7 * (CurrentModel.Position.X > 0 ? 1 : -1);
+  CurrentModel.Velocity.X = 0;
+}
+
+if(abs(CurrentModel.Position.Y) > 4){
+  CurrentModel.Position.Y = 4 * (CurrentModel.Position.Y > 0 ? 1 : -1);
+  CurrentModel.Velocity.Y = 0;
+}
+
+XText.Text = "X: " + intToStr(x*100);
+YText.Text = "Y: " + intToStr(y*100);
+
+// update rotation by light
+
+if(IsLight){
+  sensorGetData1(SENSOR_TYPE_LIGHT, x);
+  CurrentModel.RotationVelocity.Z = x / 500;
+  LText.Text = "L: " + intToStr(x);
+}]]>
+          </Expression>
+        </ZExpression>
+      </OnUpdate>
+    </Model>
+  </Content>
+</ZApplication>

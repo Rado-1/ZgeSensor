@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<ZApplication Name="App" Comment="Created by Rado1 (c) 2013" Caption="Sensor Demo 2" ClearColor="0 0 0 1" AmbientLightColor="0.7529 0.7529 0.7529 1" ScreenMode="0" CameraPosition="0 0 0" LightPosition="0 -1.01 0.8" ClipFar="800" NoSound="1" AndroidPackageName="com.rado1.SensorDemo2">
+  <OnLoaded>
+    <ZExternalLibrary Comment="OpenGL 4.0 graphics" ModuleName="opengl32" DefinitionsFile="opengl.txt">
+      <BeforeInitExp>
+<![CDATA[if(ANDROID)
+  this.ModuleName="libGLESv1_CM.so";]]>
+      </BeforeInitExp>
+    </ZExternalLibrary>
+    <ZExternalLibrary Comment="ZGESensor library" ModuleName="./libZGESensor.so" CallingConvention="1">
+      <Source>
+<![CDATA[/*
+  ZGESensor Library used to handle various sensors on Android.
+
+  Download Android shared library from
+  http://code.google.com/p/zgesensor/downloads
+
+  Copyright (c) 2013 Radovan Cervenka
+*/
+
+// sensor types; also used as sensor identifiers
+const int SENSOR_TYPE_ACCELEROMETER = 1;
+const int SENSOR_TYPE_MAGNETIC_FIELD = 2;
+const int SENSOR_TYPE_ORIENTATION = 3; // deprecated
+const int SENSOR_TYPE_GYROSCOPE = 4;
+const int SENSOR_TYPE_LIGHT = 5;
+const int SENSOR_TYPE_PROXIMITY = 8;
+const int SENSOR_TYPE_ROTATION_VECTOR = 11;
+const int SENSOR_TYPE_RELATIVE_HUMIDITY = 12;
+const int SENSOR_TYPE_PRESSURE = 6;
+const int SENSOR_TYPE_LINEAR_ACCELERATION = 10;
+const int SENSOR_TYPE_GRAVITY = 9;
+const int SENSOR_TYPE_AMBIENT_TEMPERATURE = 13;
+
+// display rotation
+const int ROTATION_0 = 0;
+const int ROTATION_90 = 1;
+const int ROTATION_180 = 2;
+const int ROTATION_270 = 3;
+
+// Initialize the library.
+void sensorInitLib() {}
+
+// Stop the library usage. Returns a negative error code on failure.
+int sensorStopLib() {}
+
+// Get rotation of display
+int getDisplayRotation() {}
+
+// Start to use sensor of the specified type.
+// Returns a negative error code on failure.
+int sensorUse(int type) {}
+
+// Set the delivery rate of events in microseconds for a sensor
+// of the given type.
+// Returns a negative error code on failure.
+int sensorSetEventRate(int type, float eventRate) {}
+
+// Disable a sensor of the specified type.
+// Returns a negative error code on failure.
+int sensorDisable(int type) {}
+
+// Enable a sensor of the specified type.
+// Returns a negative error code on failure.
+int sensorEnable(int type) {}
+
+/*
+ * Get actual data for the selected scalar sensor type.
+ * This is used for sensors such as ambient temperature,
+ * proximity, light, pressure or humidity.
+ */
+void sensorGetData1(int type, ref float value) {}
+
+/*
+ * Get actual data for the selected 3D sensor type.
+ * This is used for sensors such as accelerometer, magnetic field,
+ * gyroscope, or gravity.
+ */
+void sensorGetData3(int type, ref float x, ref float y, ref float z) {}
+
+/*
+ * Get actual data for the selected 3D sensor type.
+ * Rotation vector sensor uses <x, y, z, w> as components of
+ * a unit quaternion representing rotation of the device.
+ */
+void sensorGetData4(int type, ref float x, ref float y, ref float z, ref float w) {}
+
+// Return name of a sensor of the specified type.
+string sensorGetName(int type) {}
+
+// Return vendor's name of a sensor of the specified type.
+string sensorGetVendor(int type) {}
+
+// Return resolution of a sensor of the specified type.
+float sensorGetResolution(int type) {}
+
+/*
+ * Return the minimum delay allowed between events in microseconds for
+ * a sensor of the specified type.
+ */
+float sensorGetMinDelay(int type) {}]]>
+      </Source>
+    </ZExternalLibrary>
+    <ZLibrary Comment="Utils">
+      <Source>
+<![CDATA[const float PI2 = PI / 2;
+
+// get rotation matrix from quaternion
+void getRotationMatrixFromQuat(float x, float y, float z, float w, float[] R) {
+
+  float sq_q1 = 2 * x * x;
+  float sq_q2 = 2 * y * y;
+  float sq_q3 = 2 * z * z;
+  float q1_q2 = 2 * x * y;
+  float q3_q0 = 2 * z * w;
+  float q1_q3 = 2 * x * z;
+  float q2_q0 = 2 * y * w;
+  float q2_q3 = 2 * y * z;
+  float q1_q0 = 2 * x * w;
+
+  R[0] = 1 - sq_q2 - sq_q3;
+  R[1] = q1_q2 - q3_q0;
+  R[2] = q1_q3 + q2_q0;
+  R[3] = 0.0f;
+
+  R[4] = q1_q2 + q3_q0;
+  R[5] = 1 - sq_q1 - sq_q3;
+  R[6] = q2_q3 - q1_q0;
+  R[7] = 0.0f;
+
+  R[8] = q1_q3 - q2_q0;
+  R[9] = q2_q3 + q1_q0;
+  R[10] = 1 - sq_q1 - sq_q2;
+  R[11] = 0.0f;
+
+  R[12] = 0.0f;
+  R[13] = 0.0f;
+  R[14] = 0.0f;
+  R[15] = 1.0f;
+}]]>
+      </Source>
+    </ZLibrary>
+    <ZExpression Comment="Init">
+      <Expression>
+<![CDATA[sensorInitLib();
+sensorUse(SENSOR_TYPE_ROTATION_VECTOR);
+DisplayRotation = getDisplayRotation();]]>
+      </Expression>
+    </ZExpression>
+    <SpawnModel Model="CubeModel" Position="0 0 -8"/>
+  </OnLoaded>
+  <OnClose>
+    <ZExpression Comment="Stop sensors" Expression="sensorStopLib();"/>
+  </OnClose>
+  <OnUpdate>
+    <KeyPress Comment="Pause" CharCode="255">
+      <OnPressed>
+        <ZExpression Comment="Disable sensors" Expression="sensorDisable(SENSOR_TYPE_ROTATION_VECTOR);"/>
+      </OnPressed>
+    </KeyPress>
+    <KeyPress Comment="Resume" CharCode="254">
+      <OnPressed>
+        <ZExpression Comment="Enable sensors" Expression="sensorEnable(SENSOR_TYPE_ROTATION_VECTOR);"/>
+      </OnPressed>
+    </KeyPress>
+  </OnUpdate>
+  <Content>
+    <Variable Name="DisplayRotation" Type="1"/>
+    <Group Comment="Artwork">
+      <Children>
+        <Group Comment="Meshes">
+          <Children>
+            <Mesh Name="CubeMesh">
+              <Producers>
+                <MeshBox/>
+                <MeshExpression AutoNormals="0" VertexColors="255">
+                  <Expression>
+<![CDATA[//V : current vertex
+//N : current normal (turn off AutoNormals when modifying normals)
+//C : current color (turn on VertexColors)
+//TexCoord : current texture coordinate (turn on HasTexCoords)
+this.N.X = this.C.R = this.V.X;
+this.N.Y = this.C.G = this.V.Y;
+this.N.Z = this.C.B = this.V.Z;]]>
+                  </Expression>
+                </MeshExpression>
+              </Producers>
+            </Mesh>
+          </Children>
+        </Group>
+      </Children>
+    </Group>
+    <Model Name="CubeModel">
+      <Definitions>
+        <Array Name="RotationMatrix" SizeDim1="16"/>
+      </Definitions>
+      <OnRender>
+        <ZExpression Comment="Apply rotation">
+          <Expression>
+<![CDATA[glMatrixMode(GL_MODELVIEW);
+glLoadIdentity();
+glTranslatef(0, 0, CurrentModel.Position.Z);
+glMultMatrixf(RotationMatrix);]]>
+          </Expression>
+        </ZExpression>
+        <RenderMesh Mesh="CubeMesh"/>
+      </OnRender>
+      <OnUpdate>
+        <ZExpression Comment="Get rotation from sensor">
+          <Expression>
+<![CDATA[float x, y, z, w, a;
+
+// update rotation
+sensorGetData4(SENSOR_TYPE_ROTATION_VECTOR, x, y, z, w);
+
+// recompute by display rotation
+switch(DisplayRotation){
+  case ROTATION_90:
+    a = x;
+    x = 0 - y;
+    y = a;
+    break;
+  case ROTATION_180:
+    x = 0 - x;
+    y = 0 - y;
+    break;
+  case ROTATION_270:
+    a = x;
+    x = y;
+    y = 0 - a;
+}
+
+getRotationMatrixFromQuat(x, y, z, w, RotationMatrix);]]>
+          </Expression>
+        </ZExpression>
+      </OnUpdate>
+    </Model>
+  </Content>
+</ZApplication>
