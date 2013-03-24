@@ -106,6 +106,7 @@ float sensorGetMinDelay(int type) {}]]>
 <![CDATA[const float PIx2 = PI * 2;
 const float NPIx2 = PI * -2;
 const float PI2 = PI / 2;
+const float ROT90 = 0.25;
 
 // quaternion to Euler angles
 void toEuler(float x, float y, float z, float w,
@@ -113,16 +114,16 @@ void toEuler(float x, float y, float z, float w,
 
   float test = x*z - y*w;
 
-  if(test > 0.499){  // singularity at north pole
-    rotZ = 2 * atan2(x, w);
-    rotY = PI2;
+  if(test > 0.49999){  // singularity at north pole
+    rotZ = 2 * atan2(x, w)/NPIx2;
+    rotY = ROT90;
     rotX = 0;
     return;
   }
 
-  if(test < -0.499){  // singularity at south pole
-    rotZ = -2 * atan2(x, w);
-    rotY = -PI2;
+  if(test < -0.49999){  // singularity at south pole
+    rotZ = -2 * atan2(x, w)/NPIx2;
+    rotY = -ROT90;
     rotX = 0;
     return;
   }
