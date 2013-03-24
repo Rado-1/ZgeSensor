@@ -24,6 +24,10 @@ freely, subject to the following restrictions:
 /// The main file used to compile Android shared library
 
 // Definitions
+
+//#define LOGGING
+//#define LOG_TAG "ZGESensor"
+
 #define export extern "C"
 
 #define DONE 0
@@ -46,6 +50,8 @@ enum {
 #include <cstdlib>
 #include <android/sensor.h>
 #include <android/looper.h>
+#include <android/log.h>
+#include <jni.h>
 
 // Globals
 ASensorManager* sensorManager = ASensorManager_getInstance();
@@ -55,8 +61,76 @@ struct SensorItem {
     ASensorEvent event;
 } sensors [NUMBER_OF_SENSORS];
 ASensorEvent event;
+void* sensor_data = malloc(1000);
+int displayRotation;
+
+// Private functions
+
+// Process sensor events
+static int getSensorEvents(int fd, int events, void* data){
+    while(ASensorEventQueue_getEvents(sensorEventQueue, &event, 1) > 0)
+        sensors[event.type].event = event;
+    // to continue receiving events
+    return 1;
+}
 
 // Public functions
+
+// Initialize JNI; used to obtain display rotation
+JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
+{
+#ifdef LOGGING
+    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "JNI OnLoad called");
+#endif
+
+    /* Java code used to obtain display rotation (executed in ZgeActivity):
+     *
+     * WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+     * Display disp = wm.getDefaultDisplay();
+     * displayRotation = disp.getRotation();
+     */
+
+    /* REMARK: The following code is executed just once, at the library loading
+     * time. When ZGE will allow to rotate screen, this code will just cache
+     * classes, IDs and constants to global references and getDisplayRotation()
+     * function will call methods to obtain rotation dynamically in runtime.
+     */
+
+    // get JNI environment
+    JNIEnv *env;
+    vm->GetEnv((void**) &env, JNI_VERSION_1_6);
+
+    // get ZgeActivity instance and its class
+    jclass zgeActivityCls = env->FindClass("org/zgameeditor/ZgeActivity");
+    jfieldID zgeActivityID = env->GetStaticFieldID(zgeActivityCls, "zgeActivity", "Lorg/zgameeditor/ZgeActivity;");
+    jobject zgeActivity = env->GetStaticObjectField(zgeActivityCls, zgeActivityID);
+
+    // get WINDOW_SERVICE constant
+    jclass contextCls = env->FindClass("android/content/Context");
+    jfieldID windowServiceID = env->GetStaticFieldID(contextCls, "WINDOW_SERVICE", "Ljava/lang/String;");
+    jstring windowServiceConst = (jstring) env->GetStaticObjectField(contextCls, windowServiceID);
+
+    // get window manager and its class
+    jmethodID getSystemServiceID = env->GetMethodID(zgeActivityCls, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;");
+    jobject wm = env->CallObjectMethod(zgeActivity, getSystemServiceID, windowServiceConst);
+    jclass wmCls = env->FindClass("android/view/WindowManager");
+
+    // get default display and its class
+    jmethodID getDefaultDisplayID = env->GetMethodID(wmCls, "getDefaultDisplay", "()Landroid/view/Display;");
+    jobject disp = env->CallObjectMethod(wm, getDefaultDisplayID);
+    jclass dispCls = env->FindClass("android/view/Display");
+
+    // get display rotation
+    jmethodID getRotationID = env->GetMethodID(dispCls, "getRotation", "()I");
+    displayRotation = env->CallIntMethod(disp, getRotationID);
+
+    return JNI_VERSION_1_6;
+}
+
+// Get rotation of display
+export int getDisplayRotation(){
+    return displayRotation;
+}
 
 // Initialize the library.
 export void sensorInitLib(){
@@ -66,19 +140,29 @@ export void sensorInitLib(){
         looper = ALooper_prepare(ALOOPER_PREPARE_ALLOW_NON_CALLBACKS);
 
     // initialize event queue
-    sensorEventQueue = ASensorManager_createEventQueue(sensorManager, looper, LOOPER_ID, NULL, NULL);
+    sensorEventQueue = ASensorManager_createEventQueue(sensorManager, looper, LOOPER_ID, getSensorEvents, sensor_data);
 
     // clear array of sensors
     for(int i = 0; i < NUMBER_OF_SENSORS; i++) sensors[i].sensor = NULL;
+
+#ifdef LOGGING
+    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "Library initialized");
+#endif
 }
 
 // Stop the library usage. Returns a negative error code on failure.
 export int sensorStopLib(){
+#ifdef LOGGING
+    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "Library stopped");
+#endif
     return ASensorManager_destroyEventQueue(sensorManager, sensorEventQueue);
 }
 
 // Start to use sensor of the specified type. Returns a negative error code on failure.
 export int sensorUse(int type){
+#ifdef LOGGING
+    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorUse called");
+#endif
 
     if(sensors[type].sensor == NULL){
         // create and enable a new sensor
@@ -87,7 +171,6 @@ export int sensorUse(int type){
         sensors[type].sensor = sensor;
         ASensorEventQueue_enableSensor(sensorEventQueue, sensor);
     }
-
     return DONE;
 }
 
@@ -107,18 +190,6 @@ export int sensorEnable(int type){
     return ASensorEventQueue_enableSensor(sensorEventQueue, sensors[type].sensor);
 }
 
-// Update actual data for all the used sensors. Returns number of processes events.
-export int sensorUpdateData(){
-    int numberOfEvents = 0;
-
-    while (ASensorEventQueue_getEvents(sensorEventQueue, &event, 1) > 0){
-        sensors[event.type].event = event;
-        numberOfEvents++;
-    }
-
-    return numberOfEvents;
-}
-
 /*
  * Get actual data for the selected scalar sensor type.
  * This is used for sensors such as ambient temperature,
@@ -134,9 +205,9 @@ export void sensorGetData1(int type, float &value){
  * gyroscope, or gravity.
  */
 export void sensorGetData3(int type, float &x, float &y, float &z){
+    z = sensors[type].event.data[2];
     x = sensors[type].event.data[0];
     y = sensors[type].event.data[1];
-    z = sensors[type].event.data[2];
 }
 
 /*
@@ -151,37 +222,30 @@ export void sensorGetData4(int type, float &x, float &y, float &z, float &w){
     w = sensors[type].event.data[3];
 }
 
-
-
-
-
-
-/*
- * Get actual data for the selected sensor type.
- * Vector sensors, such as accelerometer, magnetic field, or
- * gyroscope use <x, y, z> values. Scalar sensors, such as
- * light, proximity or temperature, use just <x> value. Rotation
- * vector uses <x, y, z, w> as components of a unit quaternion.
- */
-export void sensorGetData(int type, float &x, float &y, float &z, float &w){
-    x = sensors[type].event.data[0];
-    y = sensors[type].event.data[1];
-    z = sensors[type].event.data[2];
-    w = sensors[type].event.data[3];
-}
-
 // Return name of a sensor of the specified type.
 export const char* sensorGetName(int type){
+#ifdef LOGGING
+    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorGetName called");
+#endif
+
 	return ASensor_getName(sensors[type].sensor);
 }
 
 // Return vendor's name of a sensor of the specified type.
 export const char* sensorGetVendor(int type){
+#ifdef LOGGING
+    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorGetVendor called");
+#endif
+
 	return ASensor_getVendor(sensors[type].sensor);
 }
 
 // Return resolution of a sensor of the specified type.
 export float sensorGetResolution(int type){
+#ifdef LOGGING
+    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorGetVendor called");
+#endif
+
 	return ASensor_getResolution(sensors[type].sensor);
 }
 
@@ -190,5 +254,9 @@ export float sensorGetResolution(int type){
  * a sensor of the specified type.
  */
 export float sensorGetMinDelay(int type){
+#ifdef LOGGING
+    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorGetMinDelay called");
+#endif
+
 	return ASensor_getMinDelay(sensors[type].sensor);
 }
