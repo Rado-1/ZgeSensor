@@ -1,0 +1,20 @@
+# Version History #
+
+## v1.2 (2013-03-24) ##
+
+  * Added function `getDisplayRotation`
+  * Added JNI initialization in `JNI_OnLoad` function
+  * Removed `sensorUpdateData` function; sensor data is updated automatically in a callback
+  * Added optional logging to logcat (switched off by default)
+  * Updated demo projects to handle device's display rotation
+  * Added demo project #3.
+
+## v1.1 (2013-03-10) ##
+
+  * Function `sensorGetData` was divided to `sensorGetData1`, `sensorGetData3` and `sensorGetData4` with different numbers of parameters for different sensor types.
+  * Added demo project #2 for rotation vector sensor.
+  * Updated ZExternalLibrary and ZGE demo projects accordingly.
+
+## v1.0 (2013-03-03) ##
+
+  * Initial version.
