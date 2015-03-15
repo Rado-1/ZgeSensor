@@ -7,4 +7,5 @@ ZgeSensor is free for commercial use and open source under the [Zlib License](ht
 Links:
 * For more information about usage ZgeSensor library in ZGameEditor projects see [this page](../../wiki/How-To-Use).
 * Latest changes are listed in [version history](../../wiki/Version-History).
+* Related [forum discussion](http://www.emix8.org/forum/viewtopic.php?t=1006).
 * It is recommended to use the latest beta release of ZGameEditor downloaded from [here](http://www.zgameeditor.org/files/ZGameEditor_beta.zip).
