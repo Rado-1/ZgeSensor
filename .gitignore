@@ -3,3 +3,4 @@
 *.BAK*
 libs/
 obj/
+demos/com.rado1.*/
