@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="ZgeSensor" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Release">
+				<Option platforms="" />
+				<Option output="bin/Release/ZgeSensor" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="obj/Release/" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option projectIncludeDirsRelation="2" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add directory="D:/android-ndk-r8d/platforms/android-14/arch-arm/usr/include" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add directory="D:/android-ndk-r8d/platforms/android-14/arch-arm/usr/include" />
+		</Compiler>
+		<Unit filename="ZgeSensor.cpp" />
+		<Unit filename="jni/Android.mk" />
+		<Unit filename="jni/Application.mk" />
+		<Extensions>
+			<code_completion>
+				<search_path add="C:\Program Files\android-ndk-r10d\platforms\android-9\arch-arm\usr\include" />
+			</code_completion>
+			<envvars />
+			<debugger />
+			<DoxyBlocks>
+				<comment_style block="0" line="0" />
+				<doxyfile_project />
+				<doxyfile_build />
+				<doxyfile_warnings />
+				<doxyfile_output />
+				<doxyfile_dot />
+				<general />
+			</DoxyBlocks>
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

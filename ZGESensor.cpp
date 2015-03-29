@@ -1,6 +1,6 @@
 /*
-ZGESensor Library
-Copyright (c) 2013 Radovan Cervenka
+ZgeSensor Library
+Copyright (c) 2013-2015 Radovan Cervenka
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -23,10 +23,25 @@ freely, subject to the following restrictions:
 
 /// The main file used to compile Android shared library
 
+// Includes
+
+#include <cstdlib>
+#include <android/sensor.h>
+#include <android/looper.h>
+#include <android/log.h>
+#include <jni.h>
+
+
 // Definitions
 
 //#define LOGGING
-//#define LOG_TAG "ZGESensor"
+#define LOG_TAG "ZgeSensor"
+
+#ifdef LOGGING
+#	define LOG_DEBUG(str) __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, str);
+#else
+#	define LOG_DEBUG(str)
+#endif
 
 #define export extern "C"
 
@@ -34,7 +49,7 @@ freely, subject to the following restrictions:
 #define ERROR -1
 #define NUMBER_OF_SENSORS 13
 
-#define LOOPER_ID 1
+#define LOOPER_ID 3
 
 //Additional sensor types; not in NDK, but available in SDK
 enum {
@@ -46,14 +61,8 @@ enum {
     ASENSOR_TYPE_AMBIENT_TEMPERATURE    = 13
 };
 
-// Includes
-#include <cstdlib>
-#include <android/sensor.h>
-#include <android/looper.h>
-#include <android/log.h>
-#include <jni.h>
-
 // Globals
+
 ASensorManager* sensorManager = ASensorManager_getInstance();
 ASensorEventQueue* sensorEventQueue;
 struct SensorItem {
@@ -68,6 +77,8 @@ int displayRotation;
 
 // Process sensor events
 static int getSensorEvents(int fd, int events, void* data){
+	//LOG_DEBUG("event callback called");
+
     while(ASensorEventQueue_getEvents(sensorEventQueue, &event, 1) > 0)
         sensors[event.type].event = event;
     // to continue receiving events
@@ -77,11 +88,8 @@ static int getSensorEvents(int fd, int events, void* data){
 // Public functions
 
 // Initialize JNI; used to obtain display rotation
-JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
-{
-#ifdef LOGGING
-    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "JNI OnLoad called");
-#endif
+JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved){
+	LOG_DEBUG("JNI_OnLoad called");
 
     /* Java code used to obtain display rotation (executed in ZgeActivity):
      *
@@ -124,16 +132,21 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
     jmethodID getRotationID = env->GetMethodID(dispCls, "getRotation", "()I");
     displayRotation = env->CallIntMethod(disp, getRotationID);
 
+    LOG_DEBUG("JNI_OnLoad finished");
+
     return JNI_VERSION_1_6;
 }
 
 // Get rotation of display
 export int getDisplayRotation(){
+	LOG_DEBUG("getDisplayRotation called");
     return displayRotation;
 }
 
 // Initialize the library.
 export void sensorInitLib(){
+	LOG_DEBUG("sensorInitLib called");
+
     // get looper
     ALooper* looper = ALooper_forThread();
     if(looper == NULL)
@@ -145,24 +158,18 @@ export void sensorInitLib(){
     // clear array of sensors
     for(int i = 0; i < NUMBER_OF_SENSORS; i++) sensors[i].sensor = NULL;
 
-#ifdef LOGGING
-    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "Library initialized");
-#endif
+	LOG_DEBUG("sensorInitLib finished");
 }
 
 // Stop the library usage. Returns a negative error code on failure.
 export int sensorStopLib(){
-#ifdef LOGGING
-    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "Library stopped");
-#endif
+	LOG_DEBUG("sensorStopLib called");
     return ASensorManager_destroyEventQueue(sensorManager, sensorEventQueue);
 }
 
 // Start to use sensor of the specified type. Returns a negative error code on failure.
 export int sensorUse(int type){
-#ifdef LOGGING
-    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorUse called");
-#endif
+	LOG_DEBUG("sensorUse called");
 
     if(sensors[type].sensor == NULL){
         // create and enable a new sensor
@@ -177,16 +184,19 @@ export int sensorUse(int type){
 // Set the delivery rate of events in microseconds for a sensor of the given type.
 // Returns a negative error code on failure.
 export int sensorSetEventRate(int type, float eventRate){
+	LOG_DEBUG("sensorSetEventRate called");
     return ASensorEventQueue_setEventRate(sensorEventQueue, sensors[type].sensor, eventRate);
 }
 
 // Disable a sensor of the specified type. Returns a negative error code on failure.
 export int sensorDisable(int type){
+	LOG_DEBUG("sensorDisable called");
     return ASensorEventQueue_disableSensor(sensorEventQueue, sensors[type].sensor);
 }
 
 // Enable a sensor of the specified type. Returns a negative error code on failure.
 export int sensorEnable(int type){
+	LOG_DEBUG("sensorEnable called");
     return ASensorEventQueue_enableSensor(sensorEventQueue, sensors[type].sensor);
 }
 
@@ -196,6 +206,7 @@ export int sensorEnable(int type){
  * proximity, light, pressure or humidity.
  */
 export void sensorGetData1(int type, float &value){
+	LOG_DEBUG("sensorGetData1 called");
     value = sensors[type].event.data[0];
 }
 
@@ -205,9 +216,11 @@ export void sensorGetData1(int type, float &value){
  * gyroscope, or gravity.
  */
 export void sensorGetData3(int type, float &x, float &y, float &z){
-    z = sensors[type].event.data[2];
+	LOG_DEBUG("sensorGetData3 called");
+
     x = sensors[type].event.data[0];
     y = sensors[type].event.data[1];
+    z = sensors[type].event.data[2];
 }
 
 /*
@@ -216,6 +229,8 @@ export void sensorGetData3(int type, float &x, float &y, float &z){
  * a unit quaternion representing rotation of the device.
  */
 export void sensorGetData4(int type, float &x, float &y, float &z, float &w){
+	LOG_DEBUG("sensorGetData4 called");
+
     x = sensors[type].event.data[0];
     y = sensors[type].event.data[1];
     z = sensors[type].event.data[2];
@@ -224,28 +239,19 @@ export void sensorGetData4(int type, float &x, float &y, float &z, float &w){
 
 // Return name of a sensor of the specified type.
 export const char* sensorGetName(int type){
-#ifdef LOGGING
-    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorGetName called");
-#endif
-
+	LOG_DEBUG("sensorGetName called");
 	return ASensor_getName(sensors[type].sensor);
 }
 
 // Return vendor's name of a sensor of the specified type.
 export const char* sensorGetVendor(int type){
-#ifdef LOGGING
-    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorGetVendor called");
-#endif
-
+	LOG_DEBUG("sensorGetVendor called");
 	return ASensor_getVendor(sensors[type].sensor);
 }
 
 // Return resolution of a sensor of the specified type.
 export float sensorGetResolution(int type){
-#ifdef LOGGING
-    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorGetVendor called");
-#endif
-
+	LOG_DEBUG("sensorGetResolution called");
 	return ASensor_getResolution(sensors[type].sensor);
 }
 
@@ -254,9 +260,6 @@ export float sensorGetResolution(int type){
  * a sensor of the specified type.
  */
 export float sensorGetMinDelay(int type){
-#ifdef LOGGING
-    __android_log_write(ANDROID_LOG_DEBUG, LOG_TAG, "sensorGetMinDelay called");
-#endif
-
+	LOG_DEBUG("sensorGetMinDelay called");
 	return ASensor_getMinDelay(sensors[type].sensor);
 }
